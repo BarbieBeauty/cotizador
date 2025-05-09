@@ -10,6 +10,7 @@ async function cotizar() {
 
   const file = input.files[0];
   const reader = new FileReader();
+
   reader.onloadend = async () => {
     const imagenBase64 = reader.result;
     preview.innerHTML = `<img src="${imagenBase64}" />`;
@@ -24,14 +25,22 @@ async function cotizar() {
       });
 
       const data = await res.json();
-      console.log(data); 
-
+      console.log(data);
 
       if (data.resultado) {
-        resultado.innerHTML = `<pre>${data.resultado}</pre>
-          <a href="https://wa.me/526141170236?text=${encodeURIComponent(data.resultado)}" target="_blank">
-            <button>Enviar por WhatsApp</button>
-          </a>`;
+        resultado.innerHTML = `
+          <div class="cotizacion-contenedor">
+            <h3>💅 Resultado del análisis:</h3>
+            <pre>${data.resultado}</pre>
+            <div class="precio-estimado">
+              <p>✨ <strong>Precio total estimado:</strong></p>
+              <p class="precio-final">${extraerPrecio(data.resultado)}</p>
+            </div>
+            <a href="https://wa.me/526141170236?text=${encodeURIComponent(data.resultado)}" target="_blank">
+              <button class="btn-whatsapp">Enviar por WhatsApp</button>
+            </a>
+          </div>
+        `;
       } else {
         resultado.innerHTML = "❌ No se pudo procesar la imagen.";
       }
@@ -39,5 +48,11 @@ async function cotizar() {
       resultado.innerHTML = "❌ Error de conexión o del servidor.";
     }
   };
+
   reader.readAsDataURL(file);
+}
+
+function extraerPrecio(texto) {
+  const match = texto.match(/(?:Precio total estimado:?\s*)\$[\d,]+(?:\s*-\s*\$[\d,]+)?/i);
+  return match ? match[0].replace("Precio total estimado:", "").trim() : "No disponible";
 }
