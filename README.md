@@ -1,0 +1,1 @@
+Este backend recibe una imagen base64, la analiza con GPT-4o y devuelve una cotización estimada de uñas.
