@@ -11,6 +11,10 @@ CORS(app)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 SECRET_TOKEN = "barbie1234"
 
+@app.route("/", methods=["GET"])
+def status():
+    return "✅ Barbie Beauty Backend está activo"
+
 @app.route("/analizar", methods=["POST"])
 def analizar():
     try:
