@@ -1,1 +1,0 @@
-# Código actualizado del backend
