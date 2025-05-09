@@ -24,6 +24,8 @@ async function cotizar() {
       });
 
       const data = await res.json();
+      console.log(data); 
+
 
       if (data.resultado) {
         resultado.innerHTML = `<pre>${data.resultado}</pre>
