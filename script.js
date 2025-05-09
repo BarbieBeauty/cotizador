@@ -53,6 +53,8 @@ async function cotizar() {
 }
 
 function extraerPrecio(texto) {
-  const match = texto.match(/(?:Precio total estimado:?\s*)\$[\d,]+(?:\s*-\s*\$[\d,]+)?/i);
-  return match ? match[0].replace("Precio total estimado:", "").trim() : "No disponible";
+  const regex = /precio total estimado[:\s]*\$[\d,]+(?:\s*-\s*\$[\d,]+)?/i;
+  const match = texto.match(regex);
+  return match ? match[0].split(":")[1].trim() : "No disponible";
 }
+
