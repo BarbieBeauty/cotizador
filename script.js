@@ -19,12 +19,11 @@ async function cotizar() {
 
     try {
       const res = await fetch("https://barbie-beauty-backend.onrender.com/analizar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imagen: imagenBase64,
-          token: "barbie1234"
-        })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imagen: imagenBase64, token: "barbie1234" })
+});
+        
       });
 
       const data = await res.json();
