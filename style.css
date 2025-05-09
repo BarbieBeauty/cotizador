@@ -1,0 +1,60 @@
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #ffe6f0;
+  color: #333;
+  text-align: center;
+  padding: 20px;
+}
+header {
+  padding: 10px 0;
+}
+.logo {
+  width: 100px;
+  border-radius: 50%;
+  animation: bounce 1s ease infinite alternate;
+}
+h1 {
+  color: #ff69b4;
+}
+input[type="file"], select {
+  margin: 15px auto;
+}
+button {
+  background-color: #ff69b4;
+  border: none;
+  padding: 10px 20px;
+  color: white;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+button:hover {
+  background-color: #ff1493;
+  transform: scale(1.05);
+}
+#preview img {
+  margin-top: 10px;
+  max-width: 220px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #ffb6c1;
+}
+#resultado {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 10px;
+  background: #fff;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 0 10px #ddd;
+}
+footer {
+  margin-top: 40px;
+  font-size: 14px;
+}
+@keyframes bounce {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5px); }
+}
