@@ -51,6 +51,7 @@ def analizar():
 
         response = openai.chat.completions.create(
             model="gpt-4o",
+            temperature=0,
             messages=[
                 {
                     "role": "system",
@@ -88,11 +89,16 @@ def analizar():
             match = False
 
             if extra == "efecto dorado":
-                if any(palabra in descripcion for palabra in ["foil dorado", "dorado metálico", "brillo dorado", "efecto metálico", "oro brillante"]):
+                palabras_clave_dorado = [
+                    "foil", "metálico", "brillante", "efecto dorado",
+                    "dorado metálico", "foil dorado", "reflejo dorado", "brillo oro",
+                    "acabado brillante", "líneas metálicas", "efecto espejo", "decoración dorada"
+                ]
+                if any(p in descripcion for p in palabras_clave_dorado):
                     match = True
 
             elif extra == "mármol":
-                if "mármol" in descripcion and not any(palabra in descripcion for palabra in ["efecto dorado", "foil dorado", "dorado metálico", "brillo dorado"]):
+                if "mármol" in descripcion and not any(p in descripcion for p in ["efecto dorado", "foil dorado", "dorado metálico", "brillo dorado"]):
                     match = True
 
             elif extra == "mano alzada sencilla":
@@ -122,3 +128,4 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
