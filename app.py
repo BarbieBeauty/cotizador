@@ -1,4 +1,5 @@
 
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
@@ -7,9 +8,11 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+# Configuración
 openai.api_key = os.getenv("OPENAI_API_KEY")
 SECRET_TOKEN = "barbie1234"
 
+# Tablas de precios
 TABLAS = {
     "formas": {
         "cuadrada": 0,
@@ -17,8 +20,7 @@ TABLAS = {
         "coffin": 50
     },
     "tamanos": {
-        "1": 260, "2": 280, "3": 330, "4": 380, "5": 440,
-        "6": 480, "7": 540, "8": 590, "9": 640, "10": 690
+        str(i): p for i, p in zip(range(1, 11), [260, 280, 330, 380, 440, 480, 540, 590, 640, 690])
     },
     "extras": {
         "french": 10,
@@ -36,40 +38,88 @@ TABLAS = {
     }
 }
 
+# Palabras clave para detección visual
+PALABRAS_CLAVE = {
+    "efecto_dorado": [
+        "efecto dorado dominante", "gran parte de la uña dorada", "recubrimiento dorado",
+        "dorado visible en casi toda la superficie", "cubierta dorada"
+    ],
+    "exclusiones_dorados": ["plateado", "plata", "cromo", "espejo", "metálico", "efecto espejo", "brillo plateado"],
+    "mano_alzada_sencilla": [
+        "mano alzada", "líneas artísticas", "trazos cruzados", "patrón geométrico", "diseño a mano", 
+        "diseño simétrico", "líneas blancas", "figuras decorativas", "líneas diagonales", 
+        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes", 
+        "letras", "diseño personalizado", "dibujos"
+    ],
+    "mano_alzada_compleja": [
+        "animal print", "efecto carey", "efecto tortoise", "efecto jaspeado",
+        "manchas marrones", "efecto manchado", "estilo carey"
+    ],
+    "sinonimos_formas": {
+        "almendra": ["almendra", "almendrada", "punta redonda", "forma ovalada", "curvatura suave"],
+        "cuadrada": ["cuadrada", "punta recta", "forma recta"],
+        "coffin": ["coffin", "bailarina"]
+    }
+}
+
+def detectar_forma(descripcion):
+    for forma, palabras in PALABRAS_CLAVE["sinonimos_formas"].items():
+        if any(p in descripcion for p in palabras):
+            return forma, TABLAS["formas"][forma]
+    return None, 0
+
+def detectar_decoraciones(descripcion):
+    extras = []
+    total = 0
+    decoracion_activada = set()
+
+    if any(p in descripcion for p in PALABRAS_CLAVE["efecto_dorado"]):
+        if not any(e in descripcion for e in PALABRAS_CLAVE["exclusiones_dorados"]):
+            extras.append(("Efecto Dorado", TABLAS["extras"]["efecto dorado"] * 10))
+            total += TABLAS["extras"]["efecto dorado"] * 10
+            decoracion_activada.add("efecto dorado")
+
+    if any(p in descripcion for p in PALABRAS_CLAVE["mano_alzada_compleja"]):
+        extras.append(("Mano Alzada Compleja", TABLAS["extras"]["mano alzada compleja"] * 10))
+        total += TABLAS["extras"]["mano alzada compleja"] * 10
+        decoracion_activada.add("mano alzada compleja")
+
+    if "mano alzada compleja" not in decoracion_activada and any(p in descripcion for p in PALABRAS_CLAVE["mano_alzada_compleja"]):
+        extras.append(("Mano Alzada Sencilla", TABLAS["extras"]["mano alzada sencilla"] * 10))
+        total += TABLAS["extras"]["mano alzada sencilla"] * 10
+
+    if any(p in descripcion for p in PALABRAS_CLAVE["mano_alzada_sencilla"]):
+        extras.append(("Mano Alzada Sencilla", TABLAS["extras"]["mano alzada sencilla"] * 10))
+        total += TABLAS["extras"]["mano alzada sencilla"] * 10
+
+    return extras, total
+
 @app.route("/analizar", methods=["POST"])
 def analizar():
+    data = request.get_json()
+    if data.get("token") != SECRET_TOKEN:
+        return jsonify({"error": "Token inválido"}), 401
+
+    imagen = data.get("imagen")
+    tamano = str(data.get("tamano", "5"))
+    if not imagen:
+        return jsonify({"error": "Imagen no recibida"}), 400
+
     try:
-        data = request.get_json()
-        if data.get("token") != SECRET_TOKEN:
-            return jsonify({"error": "Token inválido"}), 401
-
-        imagen = data.get("imagen")
-        tamano = str(data.get("tamano", "5"))
-
-        if not imagen:
-            return jsonify({"error": "Imagen no recibida"}), 400
-
         response = openai.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {
-                    "role": "system",
-                    "content": "Eres una experta cotizadora de uñas. Analiza la imagen y describe la forma, técnica y decoraciones visibles por uña para cotizar según las siguientes reglas: forma, técnica base y decoraciones extra se suman. Si solo ves una mano, considera que es lo mismo para ambas."
-                },
+                {"role": "system", "content": "Describe la forma, técnica y decoraciones visibles en las uñas."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Describe visualmente la forma, técnica y decoraciones visibles en esta imagen. Tamaño de uña: #{tamano}."},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": imagen, "detail": "low"}
-                        }
+                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
+                        {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
             ]
         )
-
         descripcion = response.choices[0].message.content.lower()
         total = 0
         desglose = []
@@ -78,93 +128,21 @@ def analizar():
         total += precio_tamano
         desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        for forma, precio in TABLAS["formas"].items():
-            sinonimos_formas = {
-        "almendra": ["almendra", "almendrada", "punta redonda", "forma ovalada", "curvatura suave"],
-        "cuadrada": ["cuadrada", "punta recta", "forma recta"],
-        "coffin": ["coffin", "bailarina"]
-    }
-    if any(s in descripcion for s in sinonimos_formas.get(forma, [])) :
-                total += precio
-                desglose.append(f"Forma {forma}: ${precio}")
-                break
+        forma_detectada, precio_forma = detectar_forma(descripcion)
+        if forma_detectada:
+            total += precio_forma
+            desglose.append(f"Forma {forma_detectada}: ${precio_forma}")
 
-        decoraciones_detectadas = []
-        for extra, precio in TABLAS["extras"].items():
-            match = False
+        extras, total_extras = detectar_decoraciones(descripcion)
+        total += total_extras
+        for nombre, precio in extras:
+            desglose.append(f"{nombre} x10: ${precio}")
 
-            if extra == "efecto dorado":
-    frases_dorado_completo = [
-        "gran parte de la uña dorada", "recubrimiento dorado", "diseño dorado principal",
-        "dorado dominante", "cubierta dorada", "dorado en casi toda la uña",
-        "mayoría de la superficie dorada", "efecto dorado visible en toda la uña"
-    ]
-    exclusiones_dorados = ["plateado", "plata", "cromo", "espejo", "metálico", "brillo plateado", "efecto espejo"]
-    if any(x in descripcion for x in exclusiones_dorados):
-        continue
-    if any(p in descripcion for p in frases_dorado_completo):
-        match = True
-    else:
-        continue
-
-                palabras_clave_dorado = [
-                    "foil", "metálico", "brillante", "efecto dorado",
-                    "dorado metálico", "foil dorado", "reflejo dorado", "brillo oro",
-                    "acabado brillante", "líneas metálicas", "efecto espejo", "decoración dorada"
-                ]
-                if any(p in descripcion for p in palabras_clave_dorado):
-                    match = True
-
-            elif extra == "mármol":
-                if "mármol" in descripcion and not any(p in descripcion for p in ["efecto dorado", "foil dorado", "dorado metálico", "brillo dorado"]):
-                    match = True
-
-            elif extra == "mano alzada sencilla":
-    if any(p in descripcion for p in [
-        "mano alzada", "líneas artísticas", "trazos cruzados",
-        "patrón geométrico", "diseño a mano", "diseño simétrico",
-        "líneas blancas", "figuras decorativas", "líneas diagonales",
-        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes", "letras", "diseño personalizado", "dibujos"
-    ]):
-        match = True
-
-elif extra == "mano alzada compleja":
-    if any(p in descripcion for p in [
-        "animal print", "efecto carey", "efecto tortoise", "efecto jaspeado",
-        "manchas marrones", "efecto manchado", "estilo carey"
-    ]):
-        match = True
-
-                if any(p in descripcion for p in [
-                    "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "letras", "diseño personalizado", "dibujos", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
-                    "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
-                ]):
-                    match = True
-
-            elif extra in descripcion:
-                match = True
-
-            if match:
-    if extra == "mano alzada compleja":
-        detecto_compleja = True
-
-                unidades = 10
-                total += precio * unidades
-                decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
-
-        
-# Fallback: si detectó palabras de carey pero no activó compleja
-if any(p in descripcion for p in ["animal print", "carey", "tortoise", "efecto jaspeado", "efecto manchado"]):
-    if not any("Mano Alzada Compleja" in deco for deco in decoraciones_detectadas):
-        total += 10 * TABLAS["extras"]["mano alzada sencilla"]
-        decoraciones_detectadas.append("Mano Alzada Sencilla x10: $" + str(10 * TABLAS["extras"]["mano alzada sencilla"]))
-
-desglose.extend(decoraciones_detectadas)
-
+        desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
 
         return jsonify({
-            "descripcion": descripcion.strip(),
-            "resultado": "\n".join(desglose + [f"\nPrecio total estimado: ${round(total, 2)} MXN"])
+            "descripcion": descripcion,
+            "resultado": "\n".join(desglose)
         })
 
     except Exception as e:
@@ -172,4 +150,3 @@ desglose.extend(decoraciones_detectadas)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
