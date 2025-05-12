@@ -115,6 +115,21 @@ def analizar():
                     match = True
 
             elif extra == "mano alzada sencilla":
+    if any(p in descripcion for p in [
+        "mano alzada", "líneas artísticas", "trazos cruzados",
+        "patrón geométrico", "diseño a mano", "diseño simétrico",
+        "líneas blancas", "figuras decorativas", "líneas diagonales",
+        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes"
+    ]):
+        match = True
+
+elif extra == "mano alzada compleja":
+    if any(p in descripcion for p in [
+        "animal print", "efecto carey", "efecto tortoise", "efecto jaspeado",
+        "manchas marrones", "efecto manchado", "estilo carey"
+    ]):
+        match = True
+
                 if any(p in descripcion for p in [
                     "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
                     "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
