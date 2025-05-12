@@ -101,7 +101,19 @@ def analizar():
                 ):
                     match = True
 
-            if match:
+            
+    if extra == "mano alzada sencilla":
+        if (
+            "mano alzada" in descripcion or
+            "líneas artísticas" in descripcion or
+            "trazos cruzados" in descripcion or
+            "patrón geométrico" in descripcion or
+            "diseño a mano" in descripcion or
+            "diseño simétrico" in descripcion
+        ):
+            match = True
+
+    if match:
                 unidades = 10
                 total += precio * unidades
                 decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
