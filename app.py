@@ -103,7 +103,7 @@ def analizar():
 
             elif extra == "mano alzada sencilla":
                 if any(p in descripcion for p in [
-                    "mano alzada", "líneas artísticas", "trazos cruzados",
+                    "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
                     "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
                 ]):
                     match = True
@@ -128,4 +128,3 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
