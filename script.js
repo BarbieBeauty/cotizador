@@ -1,4 +1,3 @@
-
 async function cotizar() {
   const input = document.getElementById("imagen");
   const resultado = document.getElementById("resultado");
@@ -26,7 +25,13 @@ async function cotizar() {
 
       const data = await res.json();
       if (data.resultado) {
-        resultado.innerHTML = `<pre>${data.resultado}</pre>`;
+        const texto = `<pre>${data.resultado}</pre><button id="whatsappBtn">ENVIAR POR WHATSAPP</button>`;
+        resultado.innerHTML = texto;
+
+        document.getElementById("whatsappBtn").addEventListener("click", () => {
+          const mensaje = `Hola! 💅%0A%0AQuiero cotizar este diseño de uñas:%0A%0A${encodeURIComponent(data.resultado)}%0A📸 Imagen cargada incluida en el sistema.`;
+          window.open(`https://wa.me/526141170236?text=${mensaje}`, "_blank");
+        });
       } else {
         resultado.innerHTML = "❌ No se pudo procesar la imagen.";
       }
@@ -37,8 +42,3 @@ async function cotizar() {
   reader.readAsDataURL(file);
 }
 
-document.getElementById("whatsappBtn").addEventListener("click", () => {
-  const resultado = document.getElementById("resultado").innerText;
-  const mensaje = `Hola! 💅%0A%0AQuiero cotizar este diseño de uñas:%0A%0A${encodeURIComponent(resultado)}%0A📸 Imagen cargada incluida en el sistema.`;
-  window.open(`https://wa.me/526141170236?text=${mensaje}`, "_blank");
-});
