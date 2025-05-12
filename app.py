@@ -90,19 +90,14 @@ def analizar():
 
             if extra == "efecto dorado":
     frases_dorado_completo = [
-        "efecto dorado dominante", "gran parte de la uña dorada", "cubierta dorada",
-        "dorado visible en toda la uña", "mayoría de la superficie dorada", "recubrimiento dorado",
-        "dorado en casi toda la uña", "amplio efecto dorado", "diseño dorado principal"
+        "gran parte de la uña dorada", "recubrimiento dorado", "diseño dorado principal",
+        "dorado dominante", "cubierta dorada", "dorado en casi toda la uña",
+        "mayoría de la superficie dorada", "efecto dorado visible en toda la uña"
     ]
-    frases_dorado_minimo = [
-        "detalles dorados", "pequeñas líneas doradas", "líneas metálicas",
-        "líneas doradas", "toques de dorado", "pequeñas pinceladas doradas"
-    ]
-    if any(p in descripcion for p in frases_dorado_minimo):
-        match = False
-        continue
     if any(p in descripcion for p in frases_dorado_completo):
         match = True
+    else:
+        continue
 
                 palabras_clave_dorado = [
                     "foil", "metálico", "brillante", "efecto dorado",
@@ -143,4 +138,5 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
 
