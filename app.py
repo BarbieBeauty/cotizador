@@ -119,7 +119,7 @@ def analizar():
         "mano alzada", "líneas artísticas", "trazos cruzados",
         "patrón geométrico", "diseño a mano", "diseño simétrico",
         "líneas blancas", "figuras decorativas", "líneas diagonales",
-        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes"
+        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes", "letras", "diseño personalizado", "dibujos"
     ]):
         match = True
 
@@ -131,7 +131,7 @@ elif extra == "mano alzada compleja":
         match = True
 
                 if any(p in descripcion for p in [
-                    "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
+                    "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "letras", "diseño personalizado", "dibujos", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
                     "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
                 ]):
                     match = True
