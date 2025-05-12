@@ -29,7 +29,7 @@ async function cotizar() {
         resultado.innerHTML = texto;
 
         document.getElementById("whatsappBtn").addEventListener("click", () => {
-          const mensaje = `Hola! 💅%0A%0AQuiero agendar para este diseño de uñas:%0A%0A${encodeURIComponent(data.resultado)}%0A📸 Imagen cargada incluida en el sistema.`;
+          const mensaje = `Hola! 💅%0A%0AQuiero agendar para este diseño de uñas:%0A%0A${encodeURIComponent(data.resultado)}%0A📸 MANDAR IMAGEN DEBAJO DEL TEXTO.`;
           window.open(`https://wa.me/526141170236?text=${mensaje}`, "_blank");
         });
       } else {
