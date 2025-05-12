@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,7 +9,6 @@
 </head>
 <body>
   <header>
-    <img src="logo.png" alt="Barbie Beauty Logo" class="logo"/>
     <h1>Cotizador de Uñas con IA 💅</h1>
   </header>
 
@@ -17,27 +17,22 @@
     <input type="file" id="imagen" accept="image/*" />
     <label for="tamano">Selecciona el tamaño de la uña (1 a 10):</label>
     <select id="tamano">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-      <option value="7">7</option>
-      <option value="8">8</option>
-      <option value="9">9</option>
-      <option value="10">10</option>
+      <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+      <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+      <option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
     </select>
     <button onclick="cotizar()">COTIZAR</button>
+    <button id="whatsappBtn">ENVIAR POR WHATSAPP</button>
 
     <div id="preview"></div>
     <div id="resultado"></div>
   </main>
 
   <footer>
-    <p>© 2025 Barbie Beauty | WhatsApp: <a href="https://wa.me/526141170236" target="_blank">6141170236</a></p>
+    <p>© 2025 Barbie Beauty</p>
   </footer>
 
   <script src="script.js"></script>
 </body>
 </html>
+
