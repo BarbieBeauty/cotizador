@@ -79,7 +79,12 @@ def analizar():
         desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
         for forma, precio in TABLAS["formas"].items():
-            if forma in descripcion:
+            sinonimos_formas = {
+        "almendra": ["almendra", "almendrada", "punta redonda", "forma ovalada", "curvatura suave"],
+        "cuadrada": ["cuadrada", "punta recta", "forma recta"],
+        "coffin": ["coffin", "bailarina"]
+    }
+    if any(s in descripcion for s in sinonimos_formas.get(forma, [])) :
                 total += precio
                 desglose.append(f"Forma {forma}: ${precio}")
                 break
@@ -149,7 +154,7 @@ elif extra == "mano alzada compleja":
 
         
 # Fallback: si detectó palabras de carey pero no activó compleja
-if "animal print" in descripcion or "carey" in descripcion or "tortoise" in descripcion or "efecto jaspeado" in descripcion:
+if any(p in descripcion for p in ["animal print", "carey", "tortoise", "efecto jaspeado", "efecto manchado"]):
     if not any("Mano Alzada Compleja" in deco for deco in decoraciones_detectadas):
         total += 10 * TABLAS["extras"]["mano alzada sencilla"]
         decoraciones_detectadas.append("Mano Alzada Sencilla x10: $" + str(10 * TABLAS["extras"]["mano alzada sencilla"]))
@@ -167,3 +172,4 @@ desglose.extend(decoraciones_detectadas)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
