@@ -49,7 +49,6 @@ def analizar():
         if not imagen:
             return jsonify({"error": "Imagen no recibida"}), 400
 
-        # Llamada a GPT para análisis visual
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -74,57 +73,39 @@ def analizar():
         total = 0
         desglose = []
 
-        # Tamaño
         precio_tamano = TABLAS["tamanos"].get(tamano, 0)
         total += precio_tamano
         desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        # Forma
         for forma, precio in TABLAS["formas"].items():
             if forma in descripcion:
                 total += precio
                 desglose.append(f"Forma {forma}: ${precio}")
                 break
 
-        # Extras
         decoraciones_detectadas = []
         for extra, precio in TABLAS["extras"].items():
-            match = extra in descripcion
+            match = False
 
             if extra == "efecto dorado":
-                if (
-                    "efecto dorado" in descripcion or
-                    "foil dorado" in descripcion or
-                    "dorado metálico" in descripcion or
-                    "líneas doradas" in descripcion or
-                    ("mármol" in descripcion and "dorado" in descripcion)
-                ):
+                if any(palabra in descripcion for palabra in ["foil dorado", "dorado metálico", "brillo dorado", "efecto metálico", "oro brillante"]):
                     match = True
 
-            
-    if extra == "mano alzada sencilla":
-        if (
-            "mano alzada" in descripcion or
-            "líneas artísticas" in descripcion or
-            "trazos cruzados" in descripcion or
-            "patrón geométrico" in descripcion or
-            "diseño a mano" in descripcion or
-            "diseño simétrico" in descripcion
-        ):
-            match = True
+            elif extra == "mármol":
+                if "mármol" in descripcion and not any(palabra in descripcion for palabra in ["efecto dorado", "foil dorado", "dorado metálico", "brillo dorado"]):
+                    match = True
 
-    
-    if extra == "mármol":
-        if (
-            "efecto dorado" in descripcion or
-            "foil dorado" in descripcion or
-            "dorado metálico" in descripcion or
-            "líneas doradas" in descripcion
-        ):
-            continue  # evitar doble cobro por mármol si ya se detecta efecto dorado
+            elif extra == "mano alzada sencilla":
+                if any(p in descripcion for p in [
+                    "mano alzada", "líneas artísticas", "trazos cruzados",
+                    "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
+                ]):
+                    match = True
 
-    if match:
+            elif extra in descripcion:
+                match = True
 
+            if match:
                 unidades = 10
                 total += precio * unidades
                 decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
@@ -141,4 +122,3 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
