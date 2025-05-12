@@ -49,13 +49,13 @@ def analizar():
         if not imagen:
             return jsonify({"error": "Imagen no recibida"}), 400
 
-        # Llamada a GPT-4o para análisis visual
+        # Análisis visual con GPT
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "system",
-                    "content": "Eres una experta cotizadora de uñas. Analiza la imagen y describe la forma, técnica, y decoraciones visibles por uña para cotizar según las siguientes reglas: forma, técnica base y decoraciones extra se suman. Si solo ves una mano, considera que es lo mismo para ambas."
+                    "content": "Eres una experta cotizadora de uñas. Analiza la imagen y describe la forma, técnica y decoraciones visibles por uña para cotizar según las siguientes reglas: forma, técnica base y decoraciones extra se suman. Si solo ves una mano, considera que es lo mismo para ambas."
                 },
                 {
                     "role": "user",
@@ -87,11 +87,21 @@ def analizar():
                 break
 
         # Extras
+        decoraciones_detectadas = []
         for extra, precio in TABLAS["extras"].items():
-            if extra in descripcion:
+            match = extra in descripcion
+
+            # Detección especial para efecto dorado
+            if extra == "efecto dorado":
+                if "efecto dorado" in descripcion or "foil dorado" in descripcion or "dorado metálico" in descripcion or "líneas doradas" in descripcion:
+                    match = True
+
+            if match:
                 unidades = 10
                 total += precio * unidades
-                desglose.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
+                decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
+
+        desglose.extend(decoraciones_detectadas)
 
         return jsonify({
             "descripcion": descripcion.strip(),
