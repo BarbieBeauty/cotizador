@@ -140,11 +140,22 @@ elif extra == "mano alzada compleja":
                 match = True
 
             if match:
+    if extra == "mano alzada compleja":
+        detecto_compleja = True
+
                 unidades = 10
                 total += precio * unidades
                 decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
 
-        desglose.extend(decoraciones_detectadas)
+        
+# Fallback: si detectó palabras de carey pero no activó compleja
+if "animal print" in descripcion or "carey" in descripcion or "tortoise" in descripcion or "efecto jaspeado" in descripcion:
+    if not any("Mano Alzada Compleja" in deco for deco in decoraciones_detectadas):
+        total += 10 * TABLAS["extras"]["mano alzada sencilla"]
+        decoraciones_detectadas.append("Mano Alzada Sencilla x10: $" + str(10 * TABLAS["extras"]["mano alzada sencilla"]))
+
+desglose.extend(decoraciones_detectadas)
+
 
         return jsonify({
             "descripcion": descripcion.strip(),
