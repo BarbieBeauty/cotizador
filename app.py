@@ -49,7 +49,7 @@ def analizar():
         if not imagen:
             return jsonify({"error": "Imagen no recibida"}), 400
 
-        # Análisis visual con GPT
+        # Llamada a GPT para análisis visual
         response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -91,9 +91,14 @@ def analizar():
         for extra, precio in TABLAS["extras"].items():
             match = extra in descripcion
 
-            # Detección especial para efecto dorado
             if extra == "efecto dorado":
-                if "efecto dorado" in descripcion or "foil dorado" in descripcion or "dorado metálico" in descripcion or "líneas doradas" in descripcion:
+                if (
+                    "efecto dorado" in descripcion or
+                    "foil dorado" in descripcion or
+                    "dorado metálico" in descripcion or
+                    "líneas doradas" in descripcion or
+                    ("mármol" in descripcion and "dorado" in descripcion)
+                ):
                     match = True
 
             if match:
