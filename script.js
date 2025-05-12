@@ -36,3 +36,9 @@ async function cotizar() {
   };
   reader.readAsDataURL(file);
 }
+
+document.getElementById("whatsappBtn").addEventListener("click", () => {
+  const resultado = document.getElementById("resultado").innerText;
+  const mensaje = `Hola! 💅%0A%0AQuiero cotizar este diseño de uñas:%0A%0A${encodeURIComponent(resultado)}%0A📸 Imagen cargada incluida en el sistema.`;
+  window.open(`https://wa.me/526141170236?text=${mensaje}`, "_blank");
+});
