@@ -113,7 +113,18 @@ def analizar():
         ):
             match = True
 
+    
+    if extra == "mármol":
+        if (
+            "efecto dorado" in descripcion or
+            "foil dorado" in descripcion or
+            "dorado metálico" in descripcion or
+            "líneas doradas" in descripcion
+        ):
+            continue  # evitar doble cobro por mármol si ya se detecta efecto dorado
+
     if match:
+
                 unidades = 10
                 total += precio * unidades
                 decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
@@ -130,3 +141,4 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
