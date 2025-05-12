@@ -94,6 +94,9 @@ def analizar():
         "dorado dominante", "cubierta dorada", "dorado en casi toda la uña",
         "mayoría de la superficie dorada", "efecto dorado visible en toda la uña"
     ]
+    exclusiones_plateado = ["plateado", "metálico plateado", "brillo plateado", "efecto espejo plateado"]
+    if any(x in descripcion for x in exclusiones_plateado):
+        continue
     if any(p in descripcion for p in frases_dorado_completo):
         match = True
     else:
@@ -138,5 +141,3 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
-
