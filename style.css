@@ -11,9 +11,7 @@ header {
 }
 .logo {
   width: 100px;
-  border-radius: 50%;
-  animation: bounce 1s ease infinite alternate;
-}
+  border-radius: 50%;}
 h1 {
   color: #ff69b4;
 }
@@ -53,8 +51,4 @@ button:hover {
 footer {
   margin-top: 40px;
   font-size: 14px;
-}
-@keyframes bounce {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-5px); }
 }
