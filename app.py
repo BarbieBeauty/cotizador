@@ -2,8 +2,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
-import json
-from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -33,7 +31,13 @@ PRECIOS = {
     }
 }
 
-FEEDBACK_PATH = "feedback.json"
+EXCLUSIONES = {
+    "glitter": ["solo brillo", "top coat"],
+    "efecto dorado": ["sin decoraciones doradas", "no metálico"],
+    "mármol": ["sin vetas", "sin líneas tipo mármol"],
+    "ojo de gato": ["sin línea luminosa", "no reflectivo"],
+    "3d": ["sin decoración sobresaliente", "no 3d"]
+}
 
 @app.route("/analizar", methods=["POST"])
 def analizar():
@@ -47,22 +51,15 @@ def analizar():
         return jsonify({"error": "Falta la imagen"}), 400
 
     try:
-        prompt = (
-            f"Analiza detalladamente la imagen de estas uñas. Tamaño de uña: #{tamano}. "
-            "Identifica con precisión: forma (almendra, cuadrada, coffin), y por cada uña decorada, menciona cada técnica o decoración visible: "
-            "french, baby boomer, pedrería chica, pedrería grande, glitter, efecto dorado, corazones, mármol, ojo de gato, mano alzada sencilla, mano alzada compleja, 3d. "
-            "Cuenta cuántas uñas tienen cada efecto y descríbelo de forma clara para poder calcular el precio correctamente."
-        )
-
         response = openai.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en analizar diseños de uñas para cotizaciones."},
+                {"role": "system", "content": "Eres un asistente experto en analizar imágenes de uñas. Detecta forma, técnica base y decoraciones visibles. Ignora brillos de top coat como glitter y efectos falsos."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt},
+                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
                         {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
@@ -78,44 +75,35 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        for forma, precio in PRECIOS["formas"].items():
-            if forma in descripcion:
-                total += precio
-                desglose.append(f"Forma {forma}: ${precio}")
-                break
+        if "almendra" in descripcion:
+            total += PRECIOS["formas"]["almendra"]
+            desglose.append("Forma almendra: $50")
+        elif "cuadrada" in descripcion:
+            total += PRECIOS["formas"]["cuadrada"]
+            desglose.append("Forma cuadrada: $0")
+        elif "coffin" in descripcion:
+            total += PRECIOS["formas"]["coffin"]
+            desglose.append("Forma coffin: $50")
 
         for extra, precio in PRECIOS["extras"].items():
             if extra in descripcion:
-                cantidad = descripcion.count(extra)
-                subtotal = precio * cantidad
-                total += subtotal
-                desglose.append(f"{extra.capitalize()} x{cantidad}: ${round(subtotal, 2)}")
+                ignorar = False
+                for exclusion in EXCLUSIONES.get(extra, []):
+                    if exclusion in descripcion:
+                        ignorar = True
+                        break
+                if ignorar:
+                    continue
 
-        resultado = "\n".join(desglose + [f"\nPrecio total estimado: ${round(total, 2)} MXN"])
+                cantidad = 10 if extra in ["pedrería chica", "mano alzada sencilla"] else 1
+                total += precio * cantidad
+                desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
 
-        # Guardar feedback para mejorar la lógica
-        feedback_entry = {
-            "fecha": datetime.now().isoformat(),
-            "imagen": imagen,
-            "descripcion": descripcion,
-            "etiquetas_detectadas": desglose,
-            "total_estimado": total
-        }
-
-        try:
-            with open(FEEDBACK_PATH, "r", encoding="utf-8") as f:
-                feedback_data = json.load(f)
-        except FileNotFoundError:
-            feedback_data = []
-
-        feedback_data.append(feedback_entry)
-
-        with open(FEEDBACK_PATH, "w", encoding="utf-8") as f:
-            json.dump(feedback_data, f, indent=2, ensure_ascii=False)
+        desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
 
         return jsonify({
             "descripcion": descripcion,
-            "resultado": resultado
+            "resultado": "\n".join(desglose)
         })
 
     except Exception as e:
@@ -123,4 +111,3 @@ def analizar():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
