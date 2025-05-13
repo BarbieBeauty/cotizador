@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
-import re
 
 app = Flask(__name__)
 CORS(app)
@@ -44,38 +43,25 @@ def analizar():
         return jsonify({"error": "Falta la imagen"}), 400
 
     try:
+        prompt_base = (
+            f"Eres una IA que analiza imágenes de uñas. "
+            f"Tu tarea es detectar la forma de las uñas (almendra, cuadrada o coffin), "
+            f"y contar cuántas uñas tienen cada una de las siguientes decoraciones: "
+            f"french, baby boomer, pedrería chica, pedrería grande, glitter, efecto dorado, dijes, "
+            f"corazones, mármol, ojo de gato, mano alzada sencilla, mano alzada compleja y 3d. "
+            f"Devuelve una lista detallada con conteos exactos por decoración. Tamaño indicado: #{tamano}."
+        )
+
         response = openai.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {
-  "role": "system",
-  "content": (
-    "Eres un experto en análisis de uñas con experiencia en cotizaciones de salones de belleza. "
-    "Tu tarea es detectar con precisión los siguientes elementos en la imagen:\n\n"
-    "1. **Forma de las uñas** (almendra, cuadrada, coffin)\n"
-    "2. **Decoraciones o efectos por uña** incluyendo:\n"
-    "- Pedrería (chica o grande)\n"
-    "- Glitter o efecto escarchado\n"
-    "- Mármol\n"
-    "- Efecto dorado\n"
-    "- French clásico o invertido\n"
-    "- Baby boomer\n"
-    "- Mano alzada (sencilla o compleja)\n"
-    "- Diseños 3D\n"
-    "- Corazones u otros adornos visibles\n"
-    "- Ojo de gato\n\n"
-    "Cuenta cuántas uñas tienen cada uno de estos efectos.\n"
-    "No inventes decoraciones si no son claramente visibles en la imagen.\n"
-    "Responde de forma directa, clara y en español, especificando cantidades detectadas por tipo."
-  )
-}
-
+                {"role": "system", "content": "Eres un asistente experto en analizar uñas a partir de imágenes."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
-                        {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
+                        {"type": "text", "text": prompt_base},
+                        {"type": "image_url", "image_url": {"url": imagen, "detail": "high"}}
                     ]
                 }
             ]
@@ -90,31 +76,20 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        # Detectar forma
-        for forma, precio in PRECIOS["formas"].items():
+        for forma in PRECIOS["formas"]:
             if forma in descripcion:
-                total += precio
-                desglose.append(f"Forma {forma}: ${precio}")
+                precio_forma = PRECIOS["formas"][forma]
+                total += precio_forma
+                desglose.append(f"Forma {forma}: ${precio_forma}")
                 break
 
-        # Detectar decoraciones con cantidades
         for extra, precio in PRECIOS["extras"].items():
-            patrones = [
-                rf"{extra}.*?(\d+)",
-                rf"{extra}.*?x\s?(\d+)",
-                rf"{extra}.*?(\d+)\s*uñas?",
-            ]
-            cantidad_detectada = 0
-            for patron in patrones:
-                match = re.search(patron, descripcion)
-                if match:
-                    cantidad_detectada = int(match.group(1))
-                    break
-
-            if cantidad_detectada > 0:
-                subtotal = precio * cantidad_detectada
-                total += subtotal
-                desglose.append(f"{extra.capitalize()} x{cantidad_detectada}: ${subtotal}")
+            if extra in descripcion:
+                import re
+                match = re.search(rf"{extra} x?(\d+)", descripcion)
+                cantidad = int(match.group(1)) if match else 1
+                total += precio * cantidad
+                desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
 
         desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
 
