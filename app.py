@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -47,7 +48,29 @@ def analizar():
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en analizar imágenes de uñas. Detecta con precisión: forma (almendra, cuadrada, coffin), técnica base, y decoraciones como french, mármol, glitter, pedrería, etc. Especifica cantidad de uñas por decoración si es posible."},
+                {
+  "role": "system",
+  "content": (
+    "Eres un experto en análisis de uñas con experiencia en cotizaciones de salones de belleza. "
+    "Tu tarea es detectar con precisión los siguientes elementos en la imagen:\n\n"
+    "1. **Forma de las uñas** (almendra, cuadrada, coffin)\n"
+    "2. **Decoraciones o efectos por uña** incluyendo:\n"
+    "- Pedrería (chica o grande)\n"
+    "- Glitter o efecto escarchado\n"
+    "- Mármol\n"
+    "- Efecto dorado\n"
+    "- French clásico o invertido\n"
+    "- Baby boomer\n"
+    "- Mano alzada (sencilla o compleja)\n"
+    "- Diseños 3D\n"
+    "- Corazones u otros adornos visibles\n"
+    "- Ojo de gato\n\n"
+    "Cuenta cuántas uñas tienen cada uno de estos efectos.\n"
+    "No inventes decoraciones si no son claramente visibles en la imagen.\n"
+    "Responde de forma directa, clara y en español, especificando cantidades detectadas por tipo."
+  )
+}
+
                 {
                     "role": "user",
                     "content": [
@@ -67,23 +90,31 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
+        # Detectar forma
         for forma, precio in PRECIOS["formas"].items():
             if forma in descripcion:
                 total += precio
                 desglose.append(f"Forma {forma}: ${precio}")
                 break
 
+        # Detectar decoraciones con cantidades
         for extra, precio in PRECIOS["extras"].items():
-            if extra in descripcion:
-                cantidad = 1
-                for i in range(1, 11):
-                    if f"{extra} x{i}" in descripcion or f"{i} uñas con {extra}" in descripcion:
-                        cantidad = i
-                        break
-                if extra in ["pedrería chica", "glitter", "french", "mármol", "efecto dorado", "corazones", "ojo de gato", "3d"]:
-                    cantidad = max(cantidad, 4)
-                total += precio * cantidad
-                desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
+            patrones = [
+                rf"{extra}.*?(\d+)",
+                rf"{extra}.*?x\s?(\d+)",
+                rf"{extra}.*?(\d+)\s*uñas?",
+            ]
+            cantidad_detectada = 0
+            for patron in patrones:
+                match = re.search(patron, descripcion)
+                if match:
+                    cantidad_detectada = int(match.group(1))
+                    break
+
+            if cantidad_detectada > 0:
+                subtotal = precio * cantidad_detectada
+                total += subtotal
+                desglose.append(f"{extra.capitalize()} x{cantidad_detectada}: ${subtotal}")
 
         desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
 
