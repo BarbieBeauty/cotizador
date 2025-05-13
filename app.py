@@ -1,174 +1,90 @@
+import base64
+import requests
+from fastapi import FastAPI, UploadFile, File
+from pydantic import BaseModel
+from typing import Dict
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import openai
-import os
+app = FastAPI()
 
-app = Flask(__name__)
-CORS(app)
+# Coloca tu clave de API aquí
+OPENAI_API_KEY = "tu_clave_api"
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-SECRET_TOKEN = "barbie1234"
-
-TABLAS = {
-    "formas": {
-        "cuadrada": 0,
-        "almendra": 50,
-        "coffin": 50
-    },
-    "tamanos": {
-        "1": 260, "2": 280, "3": 330, "4": 380, "5": 440,
-        "6": 480, "7": 540, "8": 590, "9": 640, "10": 690
-    },
-    "extras": {
-        "french": 10,
-        "baby boomer": 15,
-        "pedrería chica": 1.5,
-        "pedrería grande": 30,
-        "glitter": 20,
-        "efecto dorado": 15,
-        "corazones": 10,
-        "mármol": 15,
-        "ojo de gato": 5,
-        "mano alzada sencilla": 10,
-        "mano alzada compleja": 18,
-        "3d": 15
-    }
+# Precios oficiales por etiqueta
+PRECIOS = {
+    "forma_almendra": 10,
+    "forma_cuadrada": 5,
+    "coffin": 8,
+    "babyboomer": 30,
+    "extra_french": 20,
+    "pedreria_chica": 10,
+    "efecto_dorado": 15,
+    "marble": 25,
+    "mano_alzada_sencilla": 18
 }
 
-@app.route("/analizar", methods=["POST"])
-def analizar():
-    try:
-        data = request.get_json()
-        if data.get("token") != SECRET_TOKEN:
-            return jsonify({"error": "Token inválido"}), 401
+def generar_prompt():
+    return (
+        "Analiza esta imagen de uñas y responde solo con una lista JSON con los elementos visibles. "
+        "Las etiquetas válidas son: forma_almendra, forma_cuadrada, coffin, babyboomer, extra_french, "
+        "pedreria_chica, efecto_dorado, marble, mano_alzada_sencilla. "
+        "Incluye cada etiqueta tantas veces como aparezca (una por uña decorada). "
+        "Ejemplo de respuesta válida: ['forma_cuadrada', 'extra_french', 'pedreria_chica', 'extra_french']."
+    )
 
-        imagen = data.get("imagen")
-        tamano = str(data.get("tamano", "5"))
-
-        if not imagen:
-            return jsonify({"error": "Imagen no recibida"}), 400
-
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            temperature=0,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Eres una experta cotizadora de uñas. Analiza la imagen y describe la forma, técnica y decoraciones visibles por uña para cotizar según las siguientes reglas: forma, técnica base y decoraciones extra se suman. Si solo ves una mano, considera que es lo mismo para ambas."
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Describe visualmente la forma, técnica y decoraciones visibles en esta imagen. Tamaño de uña: #{tamano}."},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": imagen, "detail": "low"}
-                        }
-                    ]
-                }
-            ]
-        )
-
-        descripcion = response.choices[0].message.content.lower()
-        total = 0
-        desglose = []
-
-        precio_tamano = TABLAS["tamanos"].get(tamano, 0)
-        total += precio_tamano
-        desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
-
-        for forma, precio in TABLAS["formas"].items():
-            sinonimos_formas = {
-        "almendra": ["almendra", "almendrada", "punta redonda", "forma ovalada", "curvatura suave"],
-        "cuadrada": ["cuadrada", "punta recta", "forma recta"],
-        "coffin": ["coffin", "bailarina"]
+def analizar_imagen_con_openai(base64_image: str):
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
     }
-    if any(s in descripcion for s in sinonimos_formas.get(forma, [])) :
-                total += precio
-                desglose.append(f"Forma {forma}: ${precio}")
-                break
 
-        decoraciones_detectadas = []
-        for extra, precio in TABLAS["extras"].items():
-            match = False
-
-            if extra == "efecto dorado":
-    frases_dorado_completo = [
-        "gran parte de la uña dorada", "recubrimiento dorado", "diseño dorado principal",
-        "dorado dominante", "cubierta dorada", "dorado en casi toda la uña",
-        "mayoría de la superficie dorada", "efecto dorado visible en toda la uña"
-    ]
-    exclusiones_dorados = ["plateado", "plata", "cromo", "espejo", "metálico", "brillo plateado", "efecto espejo"]
-    if any(x in descripcion for x in exclusiones_dorados):
-        continue
-    if any(p in descripcion for p in frases_dorado_completo):
-        match = True
-    else:
-        continue
-
-                palabras_clave_dorado = [
-                    "foil", "metálico", "brillante", "efecto dorado",
-                    "dorado metálico", "foil dorado", "reflejo dorado", "brillo oro",
-                    "acabado brillante", "líneas metálicas", "efecto espejo", "decoración dorada"
+    payload = {
+        "model": "gpt-4-vision-preview",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": generar_prompt()},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                 ]
-                if any(p in descripcion for p in palabras_clave_dorado):
-                    match = True
+            }
+        ],
+        "max_tokens": 1000
+    }
 
-            elif extra == "mármol":
-                if "mármol" in descripcion and not any(p in descripcion for p in ["efecto dorado", "foil dorado", "dorado metálico", "brillo dorado"]):
-                    match = True
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers=headers,
+        json=payload
+    )
 
-            elif extra == "mano alzada sencilla":
-    if any(p in descripcion for p in [
-        "mano alzada", "líneas artísticas", "trazos cruzados",
-        "patrón geométrico", "diseño a mano", "diseño simétrico",
-        "líneas blancas", "figuras decorativas", "líneas diagonales",
-        "líneas en zigzag", "diseño gráfico", "triángulos decorativos", "trazos contrastantes", "letras", "diseño personalizado", "dibujos"
-    ]):
-        match = True
-
-elif extra == "mano alzada compleja":
-    if any(p in descripcion for p in [
-        "animal print", "efecto carey", "efecto tortoise", "efecto jaspeado",
-        "manchas marrones", "efecto manchado", "estilo carey"
-    ]):
-        match = True
-
-                if any(p in descripcion for p in [
-                    "mano alzada", "líneas artísticas", "trazos cruzados", "líneas en zigzag", "líneas diagonales", "trazos contrastantes", "letras", "diseño personalizado", "dibujos", "triángulos decorativos", "figuras abstractas", "diseño gráfico",
-                    "patrón geométrico", "diseño a mano", "diseño simétrico", "líneas blancas", "figuras decorativas"
-                ]):
-                    match = True
-
-            elif extra in descripcion:
-                match = True
-
-            if match:
-    if extra == "mano alzada compleja":
-        detecto_compleja = True
-
-                unidades = 10
-                total += precio * unidades
-                decoraciones_detectadas.append(f"{extra.title()} x{unidades}: ${precio * unidades}")
-
-        
-# Fallback: si detectó palabras de carey pero no activó compleja
-if any(p in descripcion for p in ["animal print", "carey", "tortoise", "efecto jaspeado", "efecto manchado"]):
-    if not any("Mano Alzada Compleja" in deco for deco in decoraciones_detectadas):
-        total += 10 * TABLAS["extras"]["mano alzada sencilla"]
-        decoraciones_detectadas.append("Mano Alzada Sencilla x10: $" + str(10 * TABLAS["extras"]["mano alzada sencilla"]))
-
-desglose.extend(decoraciones_detectadas)
-
-
-        return jsonify({
-            "descripcion": descripcion.strip(),
-            "resultado": "\n".join(desglose + [f"\nPrecio total estimado: ${round(total, 2)} MXN"])
-        })
-
+    result = response.json()
+    try:
+        content = result["choices"][0]["message"]["content"]
+        etiquetas = eval(content)
+        return etiquetas
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Error en la respuesta:", result)
+        return []
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+def calcular_cotizacion(etiquetas):
+    desglose = {}
+    total = 0
+    for etiqueta in etiquetas:
+        precio = PRECIOS.get(etiqueta, 0)
+        desglose[etiqueta] = desglose.get(etiqueta, 0) + precio
+        total += precio
+    return {"total": total, "desglose": desglose}
+
+@app.post("/cotizar")
+async def cotizar_imagen(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    base64_img = base64.b64encode(image_bytes).decode("utf-8")
+
+    etiquetas_detectadas = analizar_imagen_con_openai(base64_img)
+    cotizacion = calcular_cotizacion(etiquetas_detectadas)
+
+    return {
+        "etiquetas_detectadas": etiquetas_detectadas,
+        "cotizacion_total": cotizacion["total"],
+        "desglose": cotizacion["desglose"]
+    }
