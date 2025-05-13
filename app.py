@@ -47,12 +47,11 @@ def analizar():
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en analizar uñas. Detecta únicamente lo que esté visible en la imagen. Si hay dudas, no asumas que está presente."
-                },
+                {"role": "system", "content": "Eres un asistente experto en analizar imágenes de uñas. Detecta con precisión: forma (almendra, cuadrada, coffin), técnica base, y decoraciones como french, mármol, glitter, pedrería, etc. Especifica cantidad de uñas por decoración si es posible."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}. No inventes decoraciones si no son visibles claramente. No sumes más de un tipo de arte a menos que estén juntos. Evita sumar glitter si sólo hay brillo de top coat."},
+                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
                         {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
@@ -68,28 +67,21 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        if "almendra" in descripcion:
-            total += PRECIOS["formas"]["almendra"]
-            desglose.append("Forma almendra: $50")
-        elif "cuadrada" in descripcion:
-            desglose.append("Forma cuadrada: $0")
-        elif "coffin" in descripcion:
-            total += PRECIOS["formas"]["coffin"]
-            desglose.append("Forma coffin: $50")
+        for forma, precio in PRECIOS["formas"].items():
+            if forma in descripcion:
+                total += precio
+                desglose.append(f"Forma {forma}: ${precio}")
+                break
 
-        decoraciones_detectadas = set()
         for extra, precio in PRECIOS["extras"].items():
             if extra in descripcion:
-                # Validación para evitar decoraciones múltiples falsas
-                if extra == "glitter" and "glitter" not in descripcion.split():
-                    continue  # evita confundir con brillo normal
-                if "mano alzada sencilla" in decoraciones_detectadas and extra == "mano alzada compleja":
-                    continue
-                if "mano alzada compleja" in decoraciones_detectadas and extra == "mano alzada sencilla":
-                    continue
-
-                decoraciones_detectadas.add(extra)
                 cantidad = 1
+                for i in range(1, 11):
+                    if f"{extra} x{i}" in descripcion or f"{i} uñas con {extra}" in descripcion:
+                        cantidad = i
+                        break
+                if extra in ["pedrería chica", "glitter", "french", "mármol", "efecto dorado", "corazones", "ojo de gato", "3d"]:
+                    cantidad = max(cantidad, 4)
                 total += precio * cantidad
                 desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
 
