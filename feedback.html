@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Historial de Cotizaciones</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+    h1 { color: #c2185b; }
+    .entry { background: white; border-radius: 10px; padding: 15px; margin-bottom: 20px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    img { max-width: 200px; border-radius: 8px; margin-right: 10px; vertical-align: middle; }
+    .desglose { margin-top: 10px; color: #555; }
+    .total { font-weight: bold; color: #4caf50; }
+    textarea { width: 100%; margin-top: 5px; font-family: monospace; }
+    button { margin-top: 10px; background: #c2185b; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #a3154c; }
+  </style>
+</head>
+<body>
+  <h1>📋 Historial de Cotizaciones</h1>
+  <div id="contenedor"></div>
+
+  <script>
+    let feedbackData = [];
+
+    fetch("feedback.json")
+      .then(response => response.json())
+      .then(data => {
+        feedbackData = data;
+        renderEntries();
+      })
+      .catch(err => {
+        document.getElementById("contenedor").innerHTML = "No se pudo cargar feedback.json";
+        console.error(err);
+      });
+
+    function renderEntries() {
+      const contenedor = document.getElementById("contenedor");
+      contenedor.innerHTML = "";
+      feedbackData.slice().reverse().forEach((entry, indexReversed) => {
+        const index = feedbackData.length - 1 - indexReversed;
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <p><strong>Fecha:</strong> ${new Date(entry.fecha).toLocaleString()}</p>
+          <img src="${entry.imagen}" alt="Imagen de uñas">
+          <p class="desglose"><strong>Descripción GPT:</strong><br><textarea rows="4" data-index="${index}" data-field="descripcion">${entry.descripcion}</textarea></p>
+          <p class="desglose"><strong>Desglose:</strong><br><textarea rows="4" data-index="${index}" data-field="etiquetas_detectadas">${entry.etiquetas_detectadas.join("\n")}</textarea></p>
+          <p class="total">Total estimado: $<input type="number" data-index="${index}" data-field="total_estimado" value="${entry.total_estimado}" step="0.01"></p>
+          <button onclick="guardar(${index})">Guardar cambios</button>
+        `;
+        contenedor.appendChild(div);
+      });
+    }
+
+    function guardar(index) {
+      const descripcion = document.querySelector(`textarea[data-index='${index}'][data-field='descripcion']`).value;
+      const desglose = document.querySelector(`textarea[data-index='${index}'][data-field='etiquetas_detectadas']`).value.split("\n");
+      const total = parseFloat(document.querySelector(`input[data-index='${index}'][data-field='total_estimado']`).value);
+
+      feedbackData[index].descripcion = descripcion;
+      feedbackData[index].etiquetas_detectadas = desglose;
+      feedbackData[index].total_estimado = total;
+
+      const blob = new Blob([JSON.stringify(feedbackData, null, 2)], {type: "application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "feedback_actualizado.json";
+      a.click();
+    }
+  </script>
+</body>
+</html>
