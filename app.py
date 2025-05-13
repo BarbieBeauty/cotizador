@@ -31,14 +31,6 @@ PRECIOS = {
     }
 }
 
-EXCLUSIONES = {
-    "glitter": ["solo brillo", "top coat"],
-    "efecto dorado": ["sin decoraciones doradas", "no metálico"],
-    "mármol": ["sin vetas", "sin líneas tipo mármol"],
-    "ojo de gato": ["sin línea luminosa", "no reflectivo"],
-    "3d": ["sin decoración sobresaliente", "no 3d"]
-}
-
 @app.route("/analizar", methods=["POST"])
 def analizar():
     data = request.get_json()
@@ -55,11 +47,12 @@ def analizar():
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en analizar imágenes de uñas. Detecta forma, técnica base y decoraciones visibles. Ignora brillos de top coat como glitter y efectos falsos."},
+                {"role": "system", "content": "Eres un asistente experto en analizar uñas. Detecta únicamente lo que esté visible en la imagen. Si hay dudas, no asumas que está presente."
+                },
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
+                        {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}. No inventes decoraciones si no son visibles claramente. No sumes más de un tipo de arte a menos que estén juntos. Evita sumar glitter si sólo hay brillo de top coat."},
                         {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
@@ -79,23 +72,24 @@ def analizar():
             total += PRECIOS["formas"]["almendra"]
             desglose.append("Forma almendra: $50")
         elif "cuadrada" in descripcion:
-            total += PRECIOS["formas"]["cuadrada"]
             desglose.append("Forma cuadrada: $0")
         elif "coffin" in descripcion:
             total += PRECIOS["formas"]["coffin"]
             desglose.append("Forma coffin: $50")
 
+        decoraciones_detectadas = set()
         for extra, precio in PRECIOS["extras"].items():
             if extra in descripcion:
-                ignorar = False
-                for exclusion in EXCLUSIONES.get(extra, []):
-                    if exclusion in descripcion:
-                        ignorar = True
-                        break
-                if ignorar:
+                # Validación para evitar decoraciones múltiples falsas
+                if extra == "glitter" and "glitter" not in descripcion.split():
+                    continue  # evita confundir con brillo normal
+                if "mano alzada sencilla" in decoraciones_detectadas and extra == "mano alzada compleja":
+                    continue
+                if "mano alzada compleja" in decoraciones_detectadas and extra == "mano alzada sencilla":
                     continue
 
-                cantidad = 10 if extra in ["pedrería chica", "mano alzada sencilla"] else 1
+                decoraciones_detectadas.add(extra)
+                cantidad = 1
                 total += precio * cantidad
                 desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
 
