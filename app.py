@@ -1,90 +1,104 @@
-import base64
-import requests
-from fastapi import FastAPI, UploadFile, File
-from pydantic import BaseModel
-from typing import Dict
+quiero que tomes en cuenta el codigo que se utilizo a las 6:00 pm, con esa misma logica pero que pueda cotizar correctamente cualquier diseño de uña como los que acabo de mandar:
 
-app = FastAPI()
+from flask import Flask, request, jsonify
+from flask\_cors import CORS
+import openai
+import os
 
-# Coloca tu clave de API aquí
-OPENAI_API_KEY = "tu_clave_api"
+app = Flask(**name**)
+CORS(app)
 
-# Precios oficiales por etiqueta
+openai.api\_key = os.getenv("OPENAI\_API\_KEY")
+SECRET\_TOKEN = "barbie1234"
+
 PRECIOS = {
-    "forma_almendra": 10,
-    "forma_cuadrada": 5,
-    "coffin": 8,
-    "babyboomer": 30,
-    "extra_french": 20,
-    "pedreria_chica": 10,
-    "efecto_dorado": 15,
-    "marble": 25,
-    "mano_alzada_sencilla": 18
+"formas": {"almendra": 50, "cuadrada": 0, "coffin": 50},
+"tamanos": {
+"1": 260, "2": 280, "3": 330, "4": 380, "5": 440,
+"6": 480, "7": 540, "8": 590, "9": 640, "10": 690
+},
+"extras": {
+"french": 10,
+"baby boomer": 15,
+"pedrería chica": 1.5,
+"pedrería grande": 30,
+"glitter": 20,
+"efecto dorado": 15,
+"corazones": 10,
+"mármol": 15,
+"ojo de gato": 5,
+"mano alzada sencilla": 10,
+"mano alzada compleja": 18,
+"3d": 15
+}
 }
 
-def generar_prompt():
-    return (
-        "Analiza esta imagen de uñas y responde solo con una lista JSON con los elementos visibles. "
-        "Las etiquetas válidas son: forma_almendra, forma_cuadrada, coffin, babyboomer, extra_french, "
-        "pedreria_chica, efecto_dorado, marble, mano_alzada_sencilla. "
-        "Incluye cada etiqueta tantas veces como aparezca (una por uña decorada). "
-        "Ejemplo de respuesta válida: ['forma_cuadrada', 'extra_french', 'pedreria_chica', 'extra_french']."
-    )
+@app.route("/analizar", methods=\["POST"])
+def analizar():
+data = request.get\_json()
+if data.get("token") != SECRET\_TOKEN:
+return jsonify({"error": "Token inválido"}), 401
 
-def analizar_imagen_con_openai(base64_image: str):
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
+```
+imagen = data.get("imagen")
+tamano = str(data.get("tamano", "5"))
+if not imagen:
+    return jsonify({"error": "Falta la imagen"}), 400
 
-    payload = {
-        "model": "gpt-4-vision-preview",
-        "messages": [
+try:
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "Eres un asistente que analiza uñas. Detecta forma, técnica base y decoraciones visibles."},
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": generar_prompt()},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                    {"type": "text", "text": f"Describe visualmente esta imagen. Tamaño de uña: #{tamano}."},
+                    {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                 ]
             }
-        ],
-        "max_tokens": 1000
-    }
-
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers=headers,
-        json=payload
+        ]
     )
 
-    result = response.json()
-    try:
-        content = result["choices"][0]["message"]["content"]
-        etiquetas = eval(content)
-        return etiquetas
-    except Exception as e:
-        print("Error en la respuesta:", result)
-        return []
-
-def calcular_cotizacion(etiquetas):
-    desglose = {}
+    descripcion = response.choices[0].message.content.lower()
     total = 0
-    for etiqueta in etiquetas:
-        precio = PRECIOS.get(etiqueta, 0)
-        desglose[etiqueta] = desglose.get(etiqueta, 0) + precio
-        total += precio
-    return {"total": total, "desglose": desglose}
+    desglose = []
 
-@app.post("/cotizar")
-async def cotizar_imagen(file: UploadFile = File(...)):
-    image_bytes = await file.read()
-    base64_img = base64.b64encode(image_bytes).decode("utf-8")
+    if tamano in PRECIOS["tamanos"]:
+        precio_tamano = PRECIOS["tamanos"][tamano]
+        total += precio_tamano
+        desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-    etiquetas_detectadas = analizar_imagen_con_openai(base64_img)
-    cotizacion = calcular_cotizacion(etiquetas_detectadas)
+    if "almendra" in descripcion:
+        total += PRECIOS["formas"]["almendra"]
+        desglose.append("Forma almendra: $50")
+    elif "cuadrada" in descripcion:
+        total += PRECIOS["formas"]["cuadrada"]
+        desglose.append("Forma cuadrada: $0")
+    elif "coffin" in descripcion:
+        total += PRECIOS["formas"]["coffin"]
+        desglose.append("Forma coffin: $50")
 
-    return {
-        "etiquetas_detectadas": etiquetas_detectadas,
-        "cotizacion_total": cotizacion["total"],
-        "desglose": cotizacion["desglose"]
-    }
+    for extra, precio in PRECIOS["extras"].items():
+        if extra in descripcion:
+            if extra in ["pedrería chica", "mano alzada sencilla"]:
+                cantidad = 10
+            else:
+                cantidad = 5
+            total += precio * cantidad
+            desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
+
+    desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
+
+    return jsonify({
+        "descripcion": descripcion,
+        "resultado": "\n".join(desglose)
+    })
+
+except Exception as e:
+    return jsonify({"error": str(e)}), 500
+```
+
+if **name** == "**main**":
+app.run(host="0.0.0.0", port=10000)
