@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
+import uuid
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -43,25 +45,16 @@ def analizar():
         return jsonify({"error": "Falta la imagen"}), 400
 
     try:
-        prompt_base = (
-            f"Eres una IA que analiza imágenes de uñas. "
-            f"Tu tarea es detectar la forma de las uñas (almendra, cuadrada o coffin), "
-            f"y contar cuántas uñas tienen cada una de las siguientes decoraciones: "
-            f"french, baby boomer, pedrería chica, pedrería grande, glitter, efecto dorado, dijes, "
-            f"corazones, mármol, ojo de gato, mano alzada sencilla, mano alzada compleja y 3d. "
-            f"Devuelve una lista detallada con conteos exactos por decoración. Tamaño indicado: #{tamano}."
-        )
-
         response = openai.chat.completions.create(
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en analizar uñas a partir de imágenes."},
+                {"role": "system", "content": "Eres un asistente que analiza uñas. Describe detalladamente la forma, técnica base y cuántas uñas tienen cada tipo de decoración. Usa este formato: forma: coffin, glitter x4, pedrería chica x1, mármol x2..."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt_base},
-                        {"type": "image_url", "image_url": {"url": imagen, "detail": "high"}}
+                        {"type": "text", "text": f"Analiza esta imagen y cuenta decoraciones visibles. Tamaño de uña: #{tamano}."},
+                        {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
             ]
@@ -76,23 +69,26 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        for forma in PRECIOS["formas"]:
-            if forma in descripcion:
-                precio_forma = PRECIOS["formas"][forma]
-                total += precio_forma
-                desglose.append(f"Forma {forma}: ${precio_forma}")
+        for forma, precio in PRECIOS["formas"].items():
+            if f"forma: {forma}" in descripcion:
+                total += precio
+                desglose.append(f"Forma {forma}: ${precio}")
                 break
 
-        for extra, precio in PRECIOS["extras"].items():
-            if extra in descripcion:
-                import re
-                match = re.search(rf"{extra} x?(\d+)", descripcion)
-                cantidad = int(match.group(1)) if match else 1
-                total += precio * cantidad
-                desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
+        for extra, precio_unitario in PRECIOS["extras"].items():
+            for palabra in descripcion.split(","):
+                if extra in palabra:
+                    palabras = palabra.strip().split()
+                    try:
+                        cantidad = int(palabras[-1].replace("x", ""))
+                        total += precio_unitario * cantidad
+                        desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio_unitario * cantidad}")
+                    except:
+                        continue
+
+        guardar_historial(imagen, tamano, descripcion, desglose, total)
 
         desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
-
         return jsonify({
             "descripcion": descripcion,
             "resultado": "\n".join(desglose)
@@ -100,6 +96,26 @@ def analizar():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def guardar_historial(imagen, tamano, descripcion, desglose, total):
+    entry = {
+        "id": str(uuid.uuid4()),
+        "tamano": tamano,
+        "descripcion": descripcion,
+        "detalles": desglose,
+        "total": round(total, 2),
+        "imagen": imagen
+    }
+    historial_path = "historial.json"
+    if os.path.exists(historial_path):
+        with open(historial_path, "r") as f:
+            historial = json.load(f)
+    else:
+        historial = []
+
+    historial.append(entry)
+    with open(historial_path, "w") as f:
+        json.dump(historial, f, indent=2)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
