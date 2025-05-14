@@ -1,37 +1,122 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cotizador de Uñas con IA</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <title>Cotizador de Uñas Barbie Beauty</title>
+    <style>
+        body {
+            background-color: #ffe6f0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, select, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        img {
+            max-width: 300px;
+            margin: 20px auto;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        .resultado {
+            margin-top: 20px;
+            background: #fff0f5;
+            padding: 20px;
+            border-radius: 12px;
+            display: inline-block;
+            text-align: left;
+        }
+        .correccion {
+            margin-top: 20px;
+            background: #f0fff0;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+        .btn {
+            background-color: #ff66a3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #ff3385;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <img src="logo.png" alt="Barbie Beauty Logo" class="logo"/>
-    <h1>Cotizador de Uñas con IA 💅</h1>
-  </header>
-
-  <main>
-    <p>Sube una foto de tus uñas y obtén un precio estimado con inteligencia artificial.</p>
-    <input type="file" id="imagen" accept="image/*" />
-    <label for="tamano">Selecciona el tamaño de la uña (1 a 10):</label>
+    <h1>💅 Cotizador de Uñas - Barbie Beauty</h1>
+    <input type="file" id="imagen" accept="image/*">
     <select id="tamano">
-      <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-      <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-      <option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+        <option value="1">Tamaño #1</option>
+        <option value="2">Tamaño #2</option>
+        <option value="3">Tamaño #3</option>
+        <option value="4">Tamaño #4</option>
+        <option value="5" selected>Tamaño #5</option>
+        <option value="6">Tamaño #6</option>
+        <option value="7">Tamaño #7</option>
+        <option value="8">Tamaño #8</option>
+        <option value="9">Tamaño #9</option>
+        <option value="10">Tamaño #10</option>
     </select>
-    <button onclick="cotizar()">COTIZAR</button>
-
+    <button class="btn" onclick="cotizar()">COTIZAR</button>
     <div id="preview"></div>
-    <div id="resultado"></div>
-  </main>
+    <div class="resultado" id="resultado"></div>
 
-  <footer>
-    <p>© 2025 Barbie Beauty</p>
-  </footer>
+    <div class="correccion" id="correccion">
+        <h3>¿Deseas corregir?</h3>
+        <input id="forma" placeholder="Forma (almendra, cuadrada, coffin)">
+        <input id="extras" placeholder="Extras (coma separados)">
+        <button class="btn" onclick="corregir()">Corregir cotización</button>
+    </div>
 
-  <script src="script.js"></script>
+    <script>
+        let base64img = "";
+        function cotizar() {
+            const file = document.getElementById("imagen").files[0];
+            const tamano = document.getElementById("tamano").value;
+            const reader = new FileReader();
+            reader.onload = () => {
+                base64img = reader.result;
+                document.getElementById("preview").innerHTML = `<img src="${base64img}">`;
+                fetch("http://localhost:10000/analizar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        imagen: base64img,
+                        tamano: tamano,
+                        token: "barbie1234"
+                    })
+                }).then(res => res.json()).then(data => {
+                    document.getElementById("resultado").innerText = data.resultado;
+                    document.getElementById("correccion").style.display = "block";
+                });
+            };
+            if (file) reader.readAsDataURL(file);
+        }
+
+        function corregir() {
+            const tamano = document.getElementById("tamano").value;
+            const forma = document.getElementById("forma").value;
+            const extras = document.getElementById("extras").value;
+            fetch("http://localhost:10000/corregir", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    imagen: base64img,
+                    tamano: tamano,
+                    token: "barbie1234",
+                    forma: forma,
+                    extras: extras
+                })
+            }).then(res => res.json()).then(data => {
+                document.getElementById("resultado").innerText = data.resultado;
+            });
+        }
+    </script>
 </body>
 </html>
