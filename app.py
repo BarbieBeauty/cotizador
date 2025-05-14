@@ -48,11 +48,20 @@ def analizar():
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un experto en análisis de uñas. Describe con precisión forma, efectos como mármol, glitter, pedrería chica/grande y estilo de decoración."},
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres un asistente experto en analizar uñas a partir de imágenes. "
+                        "Debes identificar la forma de la uña (almendra, cuadrada, coffin), "
+                        "técnicas base y decoraciones visibles como french, pedrería, baby boomer, "
+                        "glitter, efecto dorado, mármol, corazones, mano alzada, 3D, ojo de gato. "
+                        "Di cuántas uñas tienen cada decoración."
+                    )
+                },
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Analiza esta imagen para cotización. Tamaño #{tamano}. Incluye forma y efectos decorativos."},
+                        {"type": "text", "text": f"Analiza esta imagen. Tamaño de uña: #{tamano}."},
                         {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
@@ -81,10 +90,13 @@ def analizar():
         for extra, precio in PRECIOS["extras"].items():
             if extra in descripcion:
                 cantidad = descripcion.count(extra)
+                if cantidad == 0:
+                    cantidad = 1
                 total += precio * cantidad
-                desglose.append(f"{extra.capitalize()} x{cantidad}: ${round(precio * cantidad, 2)}")
+                desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio * cantidad}")
 
         desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
+
         return jsonify({
             "descripcion": descripcion,
             "resultado": "\n".join(desglose)
@@ -99,36 +111,33 @@ def corregir():
     if data.get("token") != SECRET_TOKEN:
         return jsonify({"error": "Token inválido"}), 401
 
-    try:
-        total = 0
-        desglose = []
+    elementos = data.get("elementos", {})
+    tamano = str(data.get("tamano", "5"))
+    total = 0
+    desglose = []
 
-        tamano = str(data.get("tamano"))
-        if tamano in PRECIOS["tamanos"]:
-            precio_tamano = PRECIOS["tamanos"][tamano]
-            total += precio_tamano
-            desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
+    if tamano in PRECIOS["tamanos"]:
+        precio_tamano = PRECIOS["tamanos"][tamano]
+        total += precio_tamano
+        desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        forma = data.get("forma")
-        if forma in PRECIOS["formas"]:
-            total += PRECIOS["formas"][forma]
-            desglose.append(f"Forma {forma}: ${PRECIOS['formas'][forma]}")
+    forma = elementos.get("forma")
+    if forma in PRECIOS["formas"]:
+        total += PRECIOS["formas"][forma]
+        desglose.append(f"Forma {forma}: ${PRECIOS['formas'][forma]}")
 
-        extras = data.get("extras", {})
-        for extra, cantidad in extras.items():
-            if extra in PRECIOS["extras"]:
-                subtotal = PRECIOS["extras"][extra] * cantidad
-                total += subtotal
-                desglose.append(f"{extra.capitalize()} x{cantidad}: ${round(subtotal, 2)}")
+    extras = elementos.get("extras", {})
+    for extra, cantidad in extras.items():
+        if extra in PRECIOS["extras"]:
+            subtotal = PRECIOS["extras"][extra] * cantidad
+            total += subtotal
+            desglose.append(f"{extra.capitalize()} x{cantidad}: ${subtotal}")
 
-        desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
-        return jsonify({
-            "corregido": True,
-            "resultado": "\n".join(desglose)
-        })
+    desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "resultado": "\n".join(desglose)
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
