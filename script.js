@@ -36,7 +36,7 @@ async function cotizar() {
         resultado.innerHTML = "❌ No se pudo procesar la imagen.";
       }
     } catch (error) {
-      resultado.innerHTML = "❌ Error de conexión o del servidor.";
+      resultado.innerHTML = "❌ Error de conexión o del servidor, espere 30 seg y vuelva a intentar.";
     }
   };
   reader.readAsDataURL(file);
