@@ -1,9 +1,8 @@
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
 import os
-import uuid
-import json
 
 app = Flask(__name__)
 CORS(app)
@@ -49,11 +48,11 @@ def analizar():
             model="gpt-4o",
             temperature=0,
             messages=[
-                {"role": "system", "content": "Eres un asistente que analiza uñas. Describe detalladamente la forma, técnica base y cuántas uñas tienen cada tipo de decoración. Usa este formato: forma: coffin, glitter x4, pedrería chica x1, mármol x2..."},
+                {"role": "system", "content": "Eres un experto en análisis de uñas. Describe con precisión forma, efectos como mármol, glitter, pedrería chica/grande y estilo de decoración."},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": f"Analiza esta imagen y cuenta decoraciones visibles. Tamaño de uña: #{tamano}."},
+                        {"type": "text", "text": f"Analiza esta imagen para cotización. Tamaño #{tamano}. Incluye forma y efectos decorativos."},
                         {"type": "image_url", "image_url": {"url": imagen, "detail": "low"}}
                     ]
                 }
@@ -69,24 +68,21 @@ def analizar():
             total += precio_tamano
             desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
 
-        for forma, precio in PRECIOS["formas"].items():
-            if f"forma: {forma}" in descripcion:
-                total += precio
-                desglose.append(f"Forma {forma}: ${precio}")
-                break
+        if "almendra" in descripcion:
+            total += PRECIOS["formas"]["almendra"]
+            desglose.append("Forma almendra: $50")
+        elif "cuadrada" in descripcion:
+            total += PRECIOS["formas"]["cuadrada"]
+            desglose.append("Forma cuadrada: $0")
+        elif "coffin" in descripcion:
+            total += PRECIOS["formas"]["coffin"]
+            desglose.append("Forma coffin: $50")
 
-        for extra, precio_unitario in PRECIOS["extras"].items():
-            for palabra in descripcion.split(","):
-                if extra in palabra:
-                    palabras = palabra.strip().split()
-                    try:
-                        cantidad = int(palabras[-1].replace("x", ""))
-                        total += precio_unitario * cantidad
-                        desglose.append(f"{extra.capitalize()} x{cantidad}: ${precio_unitario * cantidad}")
-                    except:
-                        continue
-
-        guardar_historial(imagen, tamano, descripcion, desglose, total)
+        for extra, precio in PRECIOS["extras"].items():
+            if extra in descripcion:
+                cantidad = descripcion.count(extra)
+                total += precio * cantidad
+                desglose.append(f"{extra.capitalize()} x{cantidad}: ${round(precio * cantidad, 2)}")
 
         desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
         return jsonify({
@@ -97,25 +93,42 @@ def analizar():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def guardar_historial(imagen, tamano, descripcion, desglose, total):
-    entry = {
-        "id": str(uuid.uuid4()),
-        "tamano": tamano,
-        "descripcion": descripcion,
-        "detalles": desglose,
-        "total": round(total, 2),
-        "imagen": imagen
-    }
-    historial_path = "historial.json"
-    if os.path.exists(historial_path):
-        with open(historial_path, "r") as f:
-            historial = json.load(f)
-    else:
-        historial = []
+@app.route("/corregir", methods=["POST"])
+def corregir():
+    data = request.get_json()
+    if data.get("token") != SECRET_TOKEN:
+        return jsonify({"error": "Token inválido"}), 401
 
-    historial.append(entry)
-    with open(historial_path, "w") as f:
-        json.dump(historial, f, indent=2)
+    try:
+        total = 0
+        desglose = []
+
+        tamano = str(data.get("tamano"))
+        if tamano in PRECIOS["tamanos"]:
+            precio_tamano = PRECIOS["tamanos"][tamano]
+            total += precio_tamano
+            desglose.append(f"Tamaño de uña #{tamano}: ${precio_tamano}")
+
+        forma = data.get("forma")
+        if forma in PRECIOS["formas"]:
+            total += PRECIOS["formas"][forma]
+            desglose.append(f"Forma {forma}: ${PRECIOS['formas'][forma]}")
+
+        extras = data.get("extras", {})
+        for extra, cantidad in extras.items():
+            if extra in PRECIOS["extras"]:
+                subtotal = PRECIOS["extras"][extra] * cantidad
+                total += subtotal
+                desglose.append(f"{extra.capitalize()} x{cantidad}: ${round(subtotal, 2)}")
+
+        desglose.append(f"\nPrecio total estimado: ${round(total, 2)} MXN")
+        return jsonify({
+            "corregido": True,
+            "resultado": "\n".join(desglose)
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
